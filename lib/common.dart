@@ -38,6 +38,26 @@ IconData turnoIcon(String? t) {
   }
 }
 
+/// Normaliza o campo `turno` (que agora pode vir como lista text[] ou,
+/// em dados antigos, como string única).
+List<String> turnosOf(dynamic raw) {
+  if (raw is List) {
+    return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+  }
+  if (raw is String && raw.isNotEmpty) return [raw];
+  return [];
+}
+
+String turnosLabel(dynamic raw) {
+  final ts = turnosOf(raw);
+  return ts.isEmpty ? '—' : ts.map(turnoLabel).join(', ');
+}
+
+IconData turnosIcon(dynamic raw) {
+  final ts = turnosOf(raw);
+  return ts.length == 1 ? turnoIcon(ts.first) : Icons.schedule_outlined;
+}
+
 String statusOf(Map<String, dynamic> a) {
   final ini = DateTime.parse(a['data_inicio']);
   final fim = DateTime.parse(a['data_fim']);

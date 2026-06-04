@@ -30,6 +30,15 @@ Get-ChildItem "$root\build\web" -Force | Where-Object { $_.Name -ne '.vercel' } 
 )
 
 Write-Host "3/3  Publicando na Vercel..." -ForegroundColor Cyan
-vercel deploy --prebuilt --prod --yes
+$deployOut = vercel deploy --prebuilt --prod --yes 2>&1 | Out-String
+Write-Host $deployOut
 
-Write-Host "`nPronto! https://saude-escolar-sigma.vercel.app" -ForegroundColor Green
+# Reaponta o link limpo (sem "sigma") para o deploy recem-publicado.
+$m = [regex]::Match($deployOut, 'https://saude-escolar-[a-z0-9]+-sam-he99-s-projects\.vercel\.app')
+if ($m.Success) {
+  vercel alias set $m.Value saude-escolar.vercel.app
+} else {
+  Write-Host "Aviso: nao extrai a URL do deploy; reaponte o link limpo na mao se necessario." -ForegroundColor Yellow
+}
+
+Write-Host "`nPronto! https://saude-escolar.vercel.app" -ForegroundColor Green

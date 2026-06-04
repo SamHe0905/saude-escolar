@@ -902,7 +902,7 @@ class _CoberturaRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              MetaPill(turnoIcon(a['turno']), turnoLabel(a['turno'])),
+              MetaPill(turnosIcon(a['turno']), turnosLabel(a['turno'])),
               const SizedBox(height: 4),
               Text('até ${dataCurta(fim)}',
                   style: const TextStyle(
@@ -1171,7 +1171,7 @@ class _AtestadoTile extends StatelessWidget {
                         '${dateFmt.format(ini)} – ${dateFmt.format(fim)}'),
                     MetaPill(Icons.timelapse_outlined,
                         '$dias dia${dias > 1 ? 's' : ''}'),
-                    MetaPill(turnoIcon(a['turno']), turnoLabel(a['turno'])),
+                    MetaPill(turnosIcon(a['turno']), turnosLabel(a['turno'])),
                     if (sub != null)
                       MetaPill(Icons.person_outline, 'Cobre: ${sub['nome']}',
                           color: AppColors.navy, bg: AppColors.navySoft),
@@ -1260,7 +1260,7 @@ class _FormularioPageState extends State<FormularioPage> {
   final _observacoes = TextEditingController();
   DateTime? _inicio;
   DateTime? _fim;
-  String _turno = 'integral';
+  final Set<String> _turnos = {};
   PlatformFile? _novoArquivo;
   String? _arquivoExistente;
   bool _removerArquivo = false;
@@ -1282,7 +1282,7 @@ class _FormularioPageState extends State<FormularioPage> {
       final a = widget.atestado!;
       _inicio = DateTime.parse(a['data_inicio']);
       _fim = DateTime.parse(a['data_fim']);
-      _turno = (a['turno'] ?? 'integral').toString();
+      _turnos.addAll(turnosOf(a['turno']));
       _observacoes.text = (a['observacoes'] ?? '').toString();
       _arquivoExistente = a['arquivo_path'];
       _profSel = a['professor'] is Map ? Map<String, dynamic>.from(a['professor']) : null;
@@ -1313,7 +1313,7 @@ class _FormularioPageState extends State<FormularioPage> {
         mapa[sid] = Cobertura(
           (a['professor']?['nome'] ?? '').toString(),
           DateTime.parse(a['data_fim']),
-          (a['turno'] ?? 'integral').toString(),
+          turnosOf(a['turno']),
         );
       }
       _coberturas = mapa;
@@ -1390,6 +1390,7 @@ class _FormularioPageState extends State<FormularioPage> {
     if (_profSel == null) return _toast('Selecione o professor afastado.');
     if (_inicio == null || _fim == null) return _toast('Informe início e fim.');
     if (_fim!.isBefore(_inicio!)) return _toast('A data fim não pode ser antes do início.');
+    if (_turnos.isEmpty) return _toast('Selecione ao menos um turno.');
 
     setState(() => _salvando = true);
     try {
@@ -1415,7 +1416,7 @@ class _FormularioPageState extends State<FormularioPage> {
         'substituto_id': _subSel?['id'],
         'data_inicio': _inicio!.toIso8601String().substring(0, 10),
         'data_fim': _fim!.toIso8601String().substring(0, 10),
-        'turno': _turno,
+        'turno': _turnos.toList(),
         'observacoes': _observacoes.text.trim(),
         'arquivo_path': path,
       };
@@ -1469,9 +1470,11 @@ class _FormularioPageState extends State<FormularioPage> {
                           Expanded(child: _dataBtn('Fim', _fim, false)),
                         ]),
                         const SizedBox(height: 14),
-                        Text('Turno', style: _lbl()),
+                        Text('Turnos', style: _lbl()),
+                        const SizedBox(height: 4),
+                        Text('Selecione um ou mais', style: bodyMuted()),
                         const SizedBox(height: 8),
-                        _turnos(),
+                        _seletorTurnos(),
                       ],
                     ),
                   ),
@@ -1562,14 +1565,20 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-  Widget _turnos() {
+  Widget _seletorTurnos() {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: kTurnos.entries.map((e) {
-        final sel = _turno == e.key;
+        final sel = _turnos.contains(e.key);
         return GestureDetector(
-          onTap: () => setState(() => _turno = e.key),
+          onTap: () => setState(() {
+            if (sel) {
+              _turnos.remove(e.key);
+            } else {
+              _turnos.add(e.key);
+            }
+          }),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 140),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1753,8 +1762,8 @@ class _SeletorPessoa extends StatelessWidget {
 class Cobertura {
   final String professor;
   final DateTime fim;
-  final String turno;
-  Cobertura(this.professor, this.fim, this.turno);
+  final List<String> turnos;
+  Cobertura(this.professor, this.fim, this.turnos);
 }
 
 class _PessoaPicker extends StatefulWidget {
@@ -1894,7 +1903,7 @@ class _PickerItem extends StatelessWidget {
                       const SizedBox(height: 6),
                       MetaPill(
                         Icons.info_outline,
-                        'Cobrindo ${cobertura!.professor} (${turnoLabel(cobertura!.turno)}) até ${dateFmt.format(cobertura!.fim)}',
+                        'Cobrindo ${cobertura!.professor}${cobertura!.turnos.isEmpty ? '' : ' (${cobertura!.turnos.map(turnoLabel).join(', ')})'} até ${dateFmt.format(cobertura!.fim)}',
                         color: AppColors.amber,
                         bg: AppColors.amberSoft,
                       ),
@@ -2425,7 +2434,7 @@ class _DetalhePageState extends State<DetalhePage> {
                 _linha(Icons.timelapse_outlined, 'Duração',
                     '$dias dia${dias > 1 ? 's' : ''}'),
                 const Divider(),
-                _linha(turnoIcon(_a['turno']), 'Turno', turnoLabel(_a['turno'])),
+                _linha(turnosIcon(_a['turno']), 'Turno', turnosLabel(_a['turno'])),
                 const Divider(),
                 _linha(
                   Icons.diversity_3_outlined,
