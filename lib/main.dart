@@ -70,6 +70,15 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   bool _verSenha = false;
   String? _erro;
+  final _senhaFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _senha.dispose();
+    _senhaFocus.dispose();
+    super.dispose();
+  }
 
   Future<void> _entrar() async {
     setState(() { _loading = true; _erro = null; });
@@ -139,6 +148,8 @@ class _LoginPageState extends State<LoginPage> {
                               child: TextField(
                                 controller: _email,
                                 keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => _senhaFocus.requestFocus(),
                                 decoration: const InputDecoration(
                                   hintText: 'seu@email.com',
                                   prefixIcon: Icon(Icons.mail_outline, size: 20),
@@ -150,6 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                               label: 'Senha',
                               child: _PasswordField(
                                 controller: _senha,
+                                focusNode: _senhaFocus,
                                 visible: _verSenha,
                                 onToggle: () => setState(() => _verSenha = !_verSenha),
                                 onSubmit: _entrar,
@@ -214,6 +226,15 @@ class _SignupPageState extends State<SignupPage> {
   bool _verSenha = false;
   String? _erro;
   String? _info;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _senha.dispose();
+    _senha2.dispose();
+    _codigo.dispose();
+    super.dispose();
+  }
 
   Future<void> _cadastrar() async {
     final email = _email.text.trim();
@@ -654,6 +675,11 @@ class _DashboardViewState extends State<DashboardView> {
       return dias >= 0 && dias <= 7;
     }).length;
     final coberturas = ativos.where((a) => a['substituto'] != null).toList();
+    final substitutosDistintos = coberturas
+        .map((a) => a['substituto']?['id'])
+        .whereType<String>()
+        .toSet()
+        .length;
 
     final cards = [
       _Stat('Atestados ativos', '${ativos.length}', Icons.event_available_outlined,
@@ -662,7 +688,7 @@ class _DashboardViewState extends State<DashboardView> {
           AppColors.navy, AppColors.navySoft),
       _Stat('Encerram em 7 dias', '$encerram7', Icons.timelapse_outlined,
           AppColors.amber, AppColors.amberSoft),
-      _Stat('Substitutos atuando', '${coberturas.length}', Icons.diversity_3_outlined,
+      _Stat('Substitutos atuando', '$substitutosDistintos', Icons.diversity_3_outlined,
           AppColors.navy, AppColors.navySoft),
     ];
 
@@ -1203,6 +1229,12 @@ class _FormularioPageState extends State<FormularioPage> {
   bool get _editando => widget.atestado != null;
 
   @override
+  void dispose() {
+    _observacoes.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     if (_editando) {
@@ -1319,6 +1351,14 @@ class _FormularioPageState extends State<FormularioPage> {
     if (_fim!.isBefore(_inicio!)) return _toast('A data fim não pode ser antes do início.');
     if (_turnos.isEmpty) return _toast('Selecione ao menos um turno.');
 
+    if (_subSel != null) {
+      final conflitos = await _conflitosDeCobertura();
+      if (!mounted) return;
+      if (conflitos.isNotEmpty && await _confirmarConflito(conflitos) != true) {
+        return;
+      }
+    }
+
     setState(() => _salvando = true);
     try {
       String? path = _arquivoExistente;
@@ -1359,6 +1399,84 @@ class _FormularioPageState extends State<FormularioPage> {
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
+  }
+
+  /// Procura coberturas do substituto selecionado que se sobreponham em
+  /// período E turno ao atestado atual.
+  Future<List<String>> _conflitosDeCobertura() async {
+    try {
+      final ini = _inicio!.toIso8601String().substring(0, 10);
+      final fim = _fim!.toIso8601String().substring(0, 10);
+      final rows = await supabase
+          .from('atestados')
+          .select('id, data_inicio, data_fim, turno, '
+              'professor:professores!atestados_professor_id_fkey(nome)')
+          .eq('substituto_id', _subSel!['id'])
+          .lte('data_inicio', fim)
+          .gte('data_fim', ini);
+      final out = <String>[];
+      for (final r in rows) {
+        if (_editando && r['id'] == widget.atestado!['id']) continue;
+        final inter = turnosOf(r['turno']).toSet().intersection(_turnos);
+        if (inter.isEmpty) continue;
+        final prof = (r['professor']?['nome'] ?? '—').toString();
+        final di = DateTime.parse(r['data_inicio']);
+        final df = DateTime.parse(r['data_fim']);
+        out.add('$prof — ${inter.map(turnoLabel).join(', ')} '
+            '(${dateFmt.format(di)} a ${dateFmt.format(df)})');
+      }
+      return out;
+    } catch (_) {
+      return []; // se a checagem falhar, não bloqueia o salvamento
+    }
+  }
+
+  Future<bool?> _confirmarConflito(List<String> conflitos) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Conflito de cobertura',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${_subSel!['nome']} já está cobrindo no mesmo turno e período:',
+                style: bodyMuted()),
+            const SizedBox(height: 12),
+            for (final c in conflitos)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 16, color: AppColors.amber),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(c,
+                          style: const TextStyle(
+                              fontSize: 13.5, color: AppColors.text)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.textMuted)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.amber),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Salvar mesmo assim'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _toast(String s) =>
@@ -1859,6 +1977,13 @@ class _NovaPessoaState extends State<_NovaPessoa> {
   final _area = TextEditingController();
   bool _salvando = false;
   String? _erro;
+
+  @override
+  void dispose() {
+    _nome.dispose();
+    _area.dispose();
+    super.dispose();
+  }
   String get _singular => widget.tabela == 'substitutos' ? 'substituto' : 'professor';
 
   Future<void> _salvar() async {
@@ -1913,6 +2038,13 @@ class _EditarPessoaState extends State<_EditarPessoa> {
   late final _area = TextEditingController(text: widget.pessoa['area']);
   bool _salvando = false;
   String? _erro;
+
+  @override
+  void dispose() {
+    _nome.dispose();
+    _area.dispose();
+    super.dispose();
+  }
 
   Future<void> _salvar() async {
     final nome = _nome.text.trim();
@@ -2495,12 +2627,14 @@ class _PasswordField extends StatelessWidget {
   final bool visible;
   final VoidCallback onToggle;
   final VoidCallback? onSubmit;
+  final FocusNode? focusNode;
   final String hint;
   const _PasswordField({
     required this.controller,
     required this.visible,
     required this.onToggle,
     this.onSubmit,
+    this.focusNode,
     this.hint = '••••••••',
   });
 
@@ -2508,6 +2642,7 @@ class _PasswordField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: !visible,
       onSubmitted: onSubmit == null ? null : (_) => onSubmit!(),
       decoration: InputDecoration(
