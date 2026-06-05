@@ -87,186 +87,113 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= kBreakpoint;
     return Scaffold(
-      body: wide
-          ? Row(children: [
-              const Expanded(flex: 5, child: _BrandPanel()),
-              Expanded(flex: 4, child: _form(false)),
-            ])
-          : _form(true),
-    );
-  }
-
-  Widget _form(bool comLogo) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 380),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (comLogo) ...[
-                Center(child: Image.asset('assets/logo.png', height: 120)),
-                const SizedBox(height: 28),
-              ],
-              Text('Bem-vindo de volta', style: display()),
-              const SizedBox(height: 6),
-              Text('Entre para acompanhar os atestados da escola.',
-                  style: bodyMuted()),
-              const SizedBox(height: 30),
-              _Campo(
-                label: 'E-mail',
-                child: TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    hintText: 'seu@email.com',
-                    prefixIcon: Icon(Icons.mail_outline, size: 20),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _Campo(
-                label: 'Senha',
-                child: _PasswordField(
-                  controller: _senha,
-                  visible: _verSenha,
-                  onToggle: () => setState(() => _verSenha = !_verSenha),
-                  onSubmit: _entrar,
-                ),
-              ),
-              if (_erro != null) ...[
-                const SizedBox(height: 16),
-                _ErroBox(_erro!),
-              ],
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _loading ? null : _entrar,
-                child: _loading ? const _BtnSpinner() : const Text('Entrar'),
-              ),
-              const SizedBox(height: 18),
-              Row(children: [
-                const Expanded(child: Divider(color: AppColors.border)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('ou', style: bodyMuted()),
-                ),
-                const Expanded(child: Divider(color: AppColors.border)),
-              ]),
-              const SizedBox(height: 18),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.badge_outlined, size: 18),
-                label: const Text('Criar conta com convite'),
-                onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SignupPage())),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BrandPanel extends StatelessWidget {
-  const _BrandPanel();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.navy, AppColors.navyHover],
-        ),
-      ),
-      child: Stack(
+      backgroundColor: AppColors.bg,
+      body: Column(
         children: [
-          Positioned(
-            right: -60, top: -40,
-            child: _blob(220, Colors.white.withValues(alpha: 0.05)),
-          ),
-          Positioned(
-            left: -50, bottom: -30,
-            child: _blob(180, AppColors.green.withValues(alpha: 0.10)),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(48),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: AppShadows.float,
+          // Faixa institucional no topo
+          Container(height: 4, color: AppColors.navy),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(28),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(child: Image.asset('assets/logo.png', height: 92)),
+                      const SizedBox(height: 18),
+                      Center(
+                        child: Text('Sistema de Controle de Atestados',
+                            textAlign: TextAlign.center,
+                            style: GoogleFontsInter.w700(18)),
+                      ),
+                      const SizedBox(height: 4),
+                      const Center(
+                        child: Text('E.E. Teotonio Vilela',
+                            style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500)),
+                      ),
+                      const SizedBox(height: 26),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: AppShadows.soft,
+                        ),
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text('Acesso ao sistema', style: sectionTitle()),
+                            const SizedBox(height: 4),
+                            Text('Identifique-se para continuar.', style: bodyMuted()),
+                            const SizedBox(height: 22),
+                            _Campo(
+                              label: 'E-mail',
+                              child: TextField(
+                                controller: _email,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: const InputDecoration(
+                                  hintText: 'seu@email.com',
+                                  prefixIcon: Icon(Icons.mail_outline, size: 20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _Campo(
+                              label: 'Senha',
+                              child: _PasswordField(
+                                controller: _senha,
+                                visible: _verSenha,
+                                onToggle: () => setState(() => _verSenha = !_verSenha),
+                                onSubmit: _entrar,
+                              ),
+                            ),
+                            if (_erro != null) ...[
+                              const SizedBox(height: 16),
+                              _ErroBox(_erro!),
+                            ],
+                            const SizedBox(height: 22),
+                            FilledButton(
+                              onPressed: _loading ? null : _entrar,
+                              child: _loading ? const _BtnSpinner() : const Text('Entrar'),
+                            ),
+                            const SizedBox(height: 10),
+                            Center(
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.textMuted),
+                                icon: const Icon(Icons.badge_outlined, size: 16),
+                                label: const Text('Tenho um convite — criar conta'),
+                                onPressed: () => Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const SignupPage())),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Center(
+                        child: Text('Acesso restrito à equipe gestora autorizada.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.textFaint, fontSize: 12)),
+                      ),
+                    ],
                   ),
-                  child: Image.asset('assets/logo.png', height: 110),
                 ),
-                const SizedBox(height: 32),
-                Text('Saúde Escolar',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8)),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: 360,
-                  child: Text(
-                    'Controle de atestados e coberturas dos professores, em um só lugar.',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 15.5,
-                        height: 1.5),
-                  ),
-                ),
-                const SizedBox(height: 34),
-                _bullet('Afastamentos organizados por período e turno'),
-                _bullet('Banco de professores e substitutos'),
-                _bullet('Anexos guardados com segurança'),
-                const Spacer(),
-                Text('E.E. Teotonio Vilela',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500)),
-              ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _blob(double s, Color c) => Container(
-      width: s, height: s,
-      decoration: BoxDecoration(color: c, shape: BoxShape.circle));
-
-  Widget _bullet(String t) => Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 26, height: 26,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.check, size: 16, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Text(t,
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.92), fontSize: 14)),
-          ],
-        ),
-      );
 }
 
 // ===========================================================================
